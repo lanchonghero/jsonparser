@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   auto json = Dump(p1); // 序列化
   std::cout << json << std::endl; // 打印序列化结果
   std::cout << p1 << std::endl; // 打印 Person 对象
-  auto pp = Parse<Person>(json); // 反序列化 TODO: 目前Parse为函数模板，需要显示指定parse的类型，后续实现普通函数返回auto类型
+  auto pp = Parse<Person>(json); // 反序列化
   std::cout << pp << std::endl;
   assert(p1 == pp); // 反序列化的结果是对的
 
