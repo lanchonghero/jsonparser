@@ -1,7 +1,8 @@
 #include <iostream>
 #include "json_parser.h"
 
-// struct Person;
+struct Person;
+REGISTER_FORWARD_DECLARATION(Person);
 
 struct Singer {
  std::string type;
@@ -13,9 +14,9 @@ struct Address {
  std::string country;
  std::string city;
  std::string street;
- // std::vector<Person> neighbors;  // TODO: 对于前置声明类型暂未解决，此处先暂时注释掉
+ std::vector<Person> neighbors;
 };
-REGISTER_JSON_OBJECT(Address, country, city, street);
+REGISTER_JSON_OBJECT(Address, country, city, street, neighbors);
 
 struct Friend {
  std::string relation;
@@ -39,7 +40,7 @@ int main(int argc, char** argv) {
 
   Person p2{"p2", 3, Address{"china", "shanghai", "putuo"}};
 
-  Address addr1{"china", "beijing", "wangjing"/*, {p2}*/};
+  Address addr1{"china", "beijing", "wangjing", {p2}};
   Person p1{"p1", 4, addr1, {f1, f2, f3}, "the kind!"};
 
   // // 笔试者具体实现

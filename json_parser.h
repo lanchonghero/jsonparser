@@ -342,6 +342,8 @@ public:
 std::ostream& operator << (std::ostream& os, const Any& any) {
   if (any.holder_ptr_ != nullptr) {
     os << any.holder_ptr_->DumpOstream();
+  } else {
+    os << "\"\"";
   }
   return os;
 }
@@ -588,6 +590,12 @@ std::string Dump(const T& obj) {
   json_object_ptr->SetObject((void*)&obj);
   return json_object_ptr->DumpJson();
 }
+
+#define REGISTER_FORWARD_DECLARATION(ObjectType)                                                   \
+  namespace json {                                                                                 \
+  static bool ParseTo(const rapidjson::Value& value, ObjectType& to);                              \
+  static bool ParseTo(const rapidjson::Value& value, std::vector<ObjectType>& to);                 \
+  }  /* namespace json */
 
 #define REGISTER_JSON_OBJECT(ObjectType, ...)                                                      \
   namespace json {                                                                                 \
