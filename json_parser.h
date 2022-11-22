@@ -235,7 +235,6 @@ private:
   class AnyHolderBase {
   public:
     virtual ~AnyHolderBase() = default;
-    virtual std::string DumpOstream() = 0;
     virtual std::string DumpJson() = 0;
     virtual AnyHolderBase* Clone() = 0;
     virtual void SetData(void* data) = 0;
@@ -255,22 +254,6 @@ private:
       data_ = *(static_cast<T*>(data));
     }
   
-    virtual std::string DumpOstream() {
-      std::stringstream ss;
-      auto type_name = json::JsonUtil::TypeName<decltype(data_)>();
-      if (json::Container<json::JsonObjectBase>::Instance().Get(type_name) != nullptr) {
-        ss << type_name << data_;
-      } else if (std::is_base_of<decltype(data_), std::string>::value ||
-          std::is_same<decltype(data_), std::string>::value ||
-          std::is_same<decltype(data_), char const*>::value ||
-          std::is_same<decltype(data_), char*>::value) {
-        ss << "\"" << data_ << "\"";
-      } else {
-        ss << data_;
-      }
-      return ss.str();
-    }
-
     // Real vector dump
     template<typename TI>
     std::string DumpJsonVectorImpl(std::vector<TI>& vec) {
@@ -341,7 +324,7 @@ public:
 
 std::ostream& operator << (std::ostream& os, const Any& any) {
   if (any.holder_ptr_ != nullptr) {
-    os << any.holder_ptr_->DumpOstream();
+    os << any.holder_ptr_->DumpJson();
   } else {
     os << "\"\"";
   }
@@ -441,31 +424,6 @@ static bool ParseTo(const rapidjson::Value& value, Any& to) {
 
 class JsonOutput {
 public:
-  template<typename T>
-  static std::string DumpOstream(const std::vector<std::string>& members, int index, T value) {
-    // ss << members[index] << ":" << value;
-    std::stringstream ss;
-    if (std::is_base_of<T, std::string>::value || std::is_same<T, std::string>::value) {
-      ss << "\"" << value << "\"";
-    } else {
-      ss << value;
-    }
-    return ss.str();
-  }
-
-  template<typename T, typename... Ts>
-  static std::string DumpOstream(const std::vector<std::string>& members, int index, T value, Ts... args) {
-    // ss << members[index] << ":" << value << ", ";
-    std::stringstream ss;
-    if (std::is_base_of<T, std::string>::value || std::is_same<T, std::string>::value) {
-      ss << "\"" << value << "\"" << " ";
-    } else {
-      ss << value << " ";
-    }
-    ss << DumpOstream(members, ++index, args...);
-    return ss.str();
-  }
-
   // Real vector dump
   template<typename T>
   static std::string DumpJsonVectorImpl(std::vector<T>& vec) {
@@ -534,12 +492,13 @@ public:
       json_object_ptr = std::shared_ptr<json::JsonObjectBase>(json_object_ptr->Clone());
       json_object_ptr->SetObject((void*)&v);
       ss << json_object_ptr->DumpJson();
+    } else if (std::is_integral<T>::value) {
+      ss << v;
     } else if (type_name.find("vector") != std::string::npos) {
       // Dump vector json string.
       ss << DumpJsonVector(v);
-    } else {
-      // Wrapped by Any and dump json string.
-      ss << Any(v).DumpJson();
+    } else {  // string
+      ss << "\"" << v << "\"";
     }
     return ss.str();
   }
@@ -633,18 +592,12 @@ std::string Dump(const T& obj) {
   }  /* namespace json */                                                                          \
                                                                                                    \
   std::ostream& operator << (std::ostream& os, const ObjectType& object) {                         \
-    std::vector<std::string> members = json::JsonUtil::GetObjectMembers(#__VA_ARGS__);             \
-    auto s = json::JsonOutput::DumpOstream(members, 0, EXPAND_OBJECT_MEMBER(object, __VA_ARGS__)); \
-    os << "{" << s << "}";                                                                         \
+    os << Dump(object);                                                                            \
     return os;                                                                                     \
   }                                                                                                \
                                                                                                    \
   bool operator == (const ObjectType& o1, const ObjectType& o2) {                                  \
-    std::string s1, s2;                                                                            \
-    std::vector<std::string> members = json::JsonUtil::GetObjectMembers(#__VA_ARGS__);             \
-    s1 = json::JsonOutput::DumpOstream(members, 0, EXPAND_OBJECT_MEMBER(o1, __VA_ARGS__));         \
-    s2 = json::JsonOutput::DumpOstream(members, 0, EXPAND_OBJECT_MEMBER(o2, __VA_ARGS__));         \
-    return s1 == s2;                                                                               \
+    return Dump(o1) == Dump(o2);                                                                   \
   }                                                                                                \
                                                                                                    \
   class JsonObject##ObjectType : public json::JsonObjectBase {                                     \
